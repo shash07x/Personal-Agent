@@ -2,5 +2,16 @@
     "venvPath": "c:/Users/pshas/OneDrive/Desktop/Agent",
     "venv": ".venv",
     "pythonVersion": "3.14",
-    "reportMissingModuleSource": false
+    "reportMissingModuleSource": false,
+    "extraPaths": [
+        "c:/Users/pshas/OneDrive/Desktop/Agent/Poison"
+    ],
+    "executionEnvironments": [
+        {
+            "root": "Poison",
+            "extraPaths": [
+                "c:/Users/pshas/OneDrive/Desktop/Agent/Poison"
+            ]
+        }
+    ]
 }

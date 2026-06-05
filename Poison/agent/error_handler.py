@@ -22,7 +22,7 @@ class ErrorDecision(Enum):
     ABORT       = "abort"    
 
 
-ERROR_ANALYST_PROMPT = """You are the error recovery module of MARK XXV AI assistant.
+ERROR_ANALYST_PROMPT = """You are the error recovery module of POISON AI assistant.
 
 A task step has failed. Analyze the error and decide what to do.
 
@@ -78,7 +78,7 @@ def analyze_error(
             "user_message": str
         }
     """
-    import google.generativeai as genai
+    from google import genai
 
     if attempt >= max_attempts:
         print(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
@@ -90,11 +90,7 @@ def analyze_error(
             "user_message":  "Trying a different approach, sir."
         }
 
-    genai.configure(api_key=_get_api_key())
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
-        system_instruction=ERROR_ANALYST_PROMPT
-    )
+    client = genai.Client(api_key=_get_api_key())
 
     prompt = f"""Failed step:
 Tool: {step.get('tool')}
@@ -108,8 +104,14 @@ Error:
 Attempt number: {attempt}"""
 
     try:
-        response = model.generate_content(prompt)
-        text     = response.text.strip()
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=ERROR_ANALYST_PROMPT
+            )
+        )
+        text     = (response.text or "").strip()
         text     = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
 
         result = json.loads(text)
@@ -148,10 +150,9 @@ def generate_fix(step: dict, error: str, fix_suggestion: str) -> dict:
 
     Returns a modified step dict.
     """
-    import google.generativeai as genai
+    from google import genai
 
-    genai.configure(api_key=_get_api_key())
-    model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+    client = genai.Client(api_key=_get_api_key())
 
     prompt = f"""A task step failed. Generate a replacement step.
 
@@ -167,8 +168,8 @@ Write a Python script that accomplishes the same goal differently.
 Return ONLY the Python code, no explanation."""
 
     try:
-        response = model.generate_content(prompt)
-        code = response.text.strip()
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        code = (response.text or "").strip()
         code = re.sub(r"```(?:python)?", "", code).strip().rstrip("`").strip()
 
         return {

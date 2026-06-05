@@ -72,6 +72,9 @@ def _get_api_key() -> str:
 def _get_os() -> str:
     return _load_config().get("os_system", "windows").lower()
 
+def _get_voice() -> str:
+    return _load_config().get("voice_name", "Charon")
+
 _LIVE_MODEL         = "models/gemini-2.5-flash-native-audio-preview-12-2025"
 _CHANNELS           = 1
 _RECEIVE_SAMPLE_RATE = 24_000
@@ -82,7 +85,7 @@ _IMG_MAX_H = 360
 _JPEG_Q    = 60
 
 _SYSTEM_PROMPT = (
-    "You are JARVIS, an advanced AI assistant. "
+    "You are POISON, an advanced AI assistant. "
     "Analyze the provided image with precision and intelligence. "
     "Be concise and direct — maximum two sentences unless the user's question "
     "requires more detail. "
@@ -263,7 +266,7 @@ class _VisionSession:
             speech_config=gtypes.SpeechConfig(
                 voice_config=gtypes.VoiceConfig(
                     prebuilt_voice_config=gtypes.PrebuiltVoiceConfig(
-                        voice_name="Charon"
+                        voice_name=_get_voice()
                     )
                 )
             ),
@@ -305,12 +308,13 @@ class _VisionSession:
             try:
                 b64 = base64.b64encode(image_bytes).decode("ascii")
                 await self._session.send_client_content(
-                    turns={
+                    turns=[{
+                        "role": "user",
                         "parts": [
                             {"inline_data": {"mime_type": mime_type, "data": b64}},
                             {"text": user_text},
                         ]
-                    },
+                    }],
                     turn_complete=True,
                 )
                 print(f"[Vision] 📤 Sent {len(image_bytes):,} bytes — '{user_text[:60]}'")

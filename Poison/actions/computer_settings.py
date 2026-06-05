@@ -1,5 +1,8 @@
 #computer_settings.py
+from __future__ import annotations
+
 import json
+from typing import Callable, Optional
 import re
 import sys
 import time
@@ -23,6 +26,10 @@ except ImportError:
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
+def _require_pyautogui() -> None:
+    if not _PYAUTOGUI:
+        raise RuntimeError("pyautogui is not installed. Run: pip install pyautogui")
+
 
 def _get_base_dir() -> Path:
     if getattr(sys, "frozen", False):
@@ -31,8 +38,11 @@ def _get_base_dir() -> Path:
 
 def _get_api_key() -> str:
     path = _get_base_dir() / "config" / "api_keys.json"
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f).get("gemini_api_key", "")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return ""
 
 def _get_macos_wifi_interface() -> str:
     try:
@@ -82,8 +92,22 @@ def volume_mute():
         subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"],
             capture_output=True)
 
+def volume_unmute():
+    if _OS == "Windows":
+        if not _PYAUTOGUI: return
+        import ctypes
+        VOLUME_UNMUTE = 0
+        ctypes.windll.user32.keybd_event(0xAD, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0xAD, 0, 2, 0)
+    elif _OS == "Darwin":
+        subprocess.run(["osascript", "-e", "set volume without output muted"],
+            capture_output=True)
+    else:
+        subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "0"],
+            capture_output=True)
+
 def volume_set(value: int):
-    value = max(0, min(100, int(value)))
+    value = max(0, min(100, value))
     if _OS == "Windows":
         try:
             import math
@@ -91,10 +115,10 @@ def volume_set(value: int):
             from comtypes import CLSCTX_ALL
             from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
             devices   = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)  # type: ignore[union-attr]
             vol       = cast(interface, POINTER(IAudioEndpointVolume))
             vol_db    = -65.25 if value == 0 else max(-65.25, 20 * math.log10(value / 100))
-            vol.SetMasterVolumeLevel(vol_db, None)
+            vol.SetMasterVolumeLevel(vol_db, None)  # type: ignore[attr-defined]
             return
         except Exception as e:
             print(f"[Settings] pycaw failed, using keypress fallback: {e}")
@@ -295,8 +319,13 @@ def reload_page_n(n: int):
         time.sleep(0.8)
 
 
-def scroll_up(amount: int = 500):    pyautogui.scroll(amount)
-def scroll_down(amount: int = 500):  pyautogui.scroll(-amount)
+def scroll_up(amount: int = 500):
+    _require_pyautogui()
+    pyautogui.scroll(amount)
+
+def scroll_down(amount: int = 500):
+    _require_pyautogui()
+    pyautogui.scroll(-amount)
 
 def scroll_top():
     if _OS == "Darwin": pyautogui.hotkey("command", "up")
@@ -343,14 +372,15 @@ def press_escape():  pyautogui.press("escape")
 def press_key(key: str): pyautogui.press(key)
 
 def type_text(text: str, press_enter_after: bool = False):
+    _require_pyautogui()
     if not text:
         return
     if _PYPERCLIP:
-        pyperclip.copy(str(text))
+        pyperclip.copy(text)
         time.sleep(0.15)
         paste()
     else:
-        pyautogui.write(str(text), interval=0.03)
+        pyautogui.write(text, interval=0.03)
     if press_enter_after:
         time.sleep(0.1)
         pyautogui.press("enter")
@@ -502,11 +532,26 @@ def shutdown_computer():
     else:
         subprocess.run(["systemctl", "poweroff"], capture_output=True)
 
-ACTION_MAP: dict[str, callable] = {
+def change_voice(voice_name: str) -> str:
+    voices = {"Charon", "Puck", "Kore", "Leda", "Fenrir", "Orus", "Aoede", "Zephyr"}
+    if voice_name not in voices:
+        return f"Unknown voice '{voice_name}'. Available: {', '.join(sorted(voices))}"
+    try:
+        import json
+        from pathlib import Path
+        p = Path(__file__).resolve().parent.parent / "config" / "api_keys.json"
+        cfg = json.loads(p.read_text(encoding="utf-8"))
+        cfg["voice_name"] = voice_name
+        p.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
+        return f"Voice changed to {voice_name}. Say 'reconnect' or restart to apply."
+    except Exception as e:
+        return f"Failed to change voice: {e}"
+
+ACTION_MAP: dict[str, Callable] = {
     "volume_up":           volume_up,
     "volume_down":         volume_down,
     "mute":                volume_mute,
-    "unmute":              volume_mute,
+    "unmute":              volume_unmute,
     "toggle_mute":         volume_mute,
     "brightness_up":       brightness_up,
     "brightness_down":     brightness_down,
@@ -562,6 +607,7 @@ ACTION_MAP: dict[str, callable] = {
     "toggle_wifi":         toggle_wifi,
     "restart":             restart_computer,
     "shutdown":            shutdown_computer,
+    "change_voice":        change_voice,
 }
 
 _DANGEROUS_ACTIONS = {"restart", "shutdown"}
@@ -570,9 +616,8 @@ _DANGEROUS_ACTIONS = {"restart", "shutdown"}
 
 def _detect_action(description: str) -> dict:
 
-    import google.generativeai as genai
-    genai.configure(api_key=_get_api_key())
-    model = genai.GenerativeModel("gemini-2.5-flash-lite")
+    from google import genai
+    client = genai.Client(api_key=_get_api_key())
 
     available = ", ".join(sorted(ACTION_MAP.keys())) + \
                 ", volume_set, type_text, press_key, reload_n"
@@ -596,15 +641,15 @@ Rules:
 - Return ONLY the JSON, no explanation, no markdown."""
 
     try:
-        resp = model.generate_content(prompt)
-        text = re.sub(r"```(?:json)?", "", resp.text).strip().rstrip("`").strip()
+        resp = client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
+        text = re.sub(r"```(?:json)?", "", resp.text or "").strip().rstrip("`").strip()
         return json.loads(text)
     except Exception as e:
         print(f"[Settings] Intent detection failed: {e}")
         return {"action": description.lower().replace(" ", "_"), "value": None}
 
 def computer_settings(
-    parameters: dict = None,
+    parameters: Optional[dict] = None,
     response=None,
     player=None,
     session_memory=None,
@@ -668,6 +713,12 @@ def computer_settings(
             return f"Reloaded {value or 1} time(s)."
         except Exception as e:
             return f"Reload failed: {e}"
+
+    if action == "change_voice":
+        voice = value or params.get("text", "")
+        if not voice:
+            return "Specify a voice name. Available: Charon, Puck, Kore, Leda, Fenrir, Orus, Aoede, Zephyr"
+        return change_voice(voice)
 
     if action == "scroll_up":
         scroll_up(int(value or 500))

@@ -3,6 +3,7 @@
     "python.defaultInterpreterPath": "c:/Users/pshas/OneDrive/Desktop/Agent/.venv/Scripts/python.exe",
     "python.pythonPath": "c:/Users/pshas/OneDrive/Desktop/Agent/.venv/Scripts/python.exe",
     "python.analysis.extraPaths": [
-        "c:/Users/pshas/OneDrive/Desktop/Agent/.venv/Lib/site-packages"
+        "c:/Users/pshas/OneDrive/Desktop/Agent/.venv/Lib/site-packages",
+        "c:/Users/pshas/OneDrive/Desktop/Agent/Poison"
     ]
 }

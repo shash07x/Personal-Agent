@@ -210,6 +210,3 @@ def forget(key: str, category: str = "notes") -> str:
         save_memory(memory)
         return f"Forgotten: {category}/{key}"
     return f"Not found: {category}/{key}"
-
-
-forget_memory = forget

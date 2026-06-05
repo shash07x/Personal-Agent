@@ -1,5 +1,5 @@
 """
-file_processor.py — JARVIS Universal File Processor
+file_processor.py — POISON Universal File Processor
 
 Supported types:
   image   → describe, ocr, resize, convert, compress, crop
@@ -25,7 +25,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-import google.generativeai as genai
+from google import genai
 
 
 def _get_api_key() -> str:
@@ -34,9 +34,19 @@ def _get_api_key() -> str:
         return json.load(f)["gemini_api_key"]
 
 
+class _GeminiModel:
+    def __init__(self, model_name: str = "gemini-2.5-flash"):
+        self._client = genai.Client(api_key=_get_api_key())
+        self._model  = model_name
+
+    def generate_content(self, contents):
+        return self._client.models.generate_content(
+            model=self._model, contents=contents,
+        )
+
+
 def _gemini_client():
-    genai.configure(api_key=_get_api_key())
-    return genai.GenerativeModel("gemini-2.5-flash")
+    return _GeminiModel()
 
 
 def _detect_type(path: Path) -> str:
@@ -291,10 +301,10 @@ def _process_text_doc(path: Path, file_type: str, action: str,
         "custom":     f"{instruction}\n\n{content[:40000]}",
     }
 
-    if action not in prompt_map:
-
-        action  = "custom"
-        instruction = action
+    if action not in prompt_map and instruction:
+        action = "custom"
+    elif action not in prompt_map:
+        return f"Unknown action: '{action}'. Supported: {', '.join(prompt_map)}"
 
     try:
         model    = _gemini_client()

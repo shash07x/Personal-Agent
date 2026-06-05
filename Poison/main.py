@@ -13,6 +13,7 @@ from ui import PoisonUI
 from memory.memory_manager import (
     load_memory, update_memory, format_memory_for_prompt,
 )
+from config import get_voice
 
 from actions.file_processor import file_processor
 from actions.flight_finder     import flight_finder
@@ -58,7 +59,7 @@ def _load_system_prompt() -> str:
         return PROMPT_PATH.read_text(encoding="utf-8")
     except Exception:
         return (
-            "You are JARVIS, Tony Stark's AI assistant. "
+            "You are POISON, Tony Stark's AI assistant. "
             "Be concise, direct, and always use the provided tools to complete tasks. "
             "Never simulate or guess results — always call the appropriate tool."
         )
@@ -370,7 +371,7 @@ TOOL_DECLARATIONS = [
         }
     },
     {
-        "name": "shutdown_jarvis",
+        "name": "shutdown_poison",
         "description": (
             "Shuts down the assistant completely. "
             "Call this when the user expresses intent to end the conversation, "
@@ -548,17 +549,22 @@ class PoisonLive:
             parts.append(mem_str)
         parts.append(sys_prompt)
 
+        try:
+            session_resumption = types.SessionResumptionConfig()
+        except AttributeError:
+            session_resumption = None
+
         return types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            output_audio_transcription={},
-            input_audio_transcription={},
+            output_audio_transcription=types.AudioTranscriptionConfig(),
+            input_audio_transcription=types.AudioTranscriptionConfig(),
             system_instruction="\n".join(parts),
-            tools=[{"function_declarations": TOOL_DECLARATIONS}],
-            session_resumption=types.SessionResumptionConfig(),
+            tools=[types.Tool(function_declarations=TOOL_DECLARATIONS)],
+            session_resumption=session_resumption,
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name="Charon"
+                        voice_name=get_voice()
                     )
                 )
             ),
@@ -568,7 +574,7 @@ class PoisonLive:
         name = fc.name
         args = dict(fc.args or {})
 
-        print(f"[JARVIS] 🔧 {name}  {args}")
+        print(f"[POISON] 🔧 {name}  {args}")
         self.ui.set_state("THINKING")
 
         if name == "save_memory":
@@ -673,7 +679,7 @@ class PoisonLive:
                 r = await loop.run_in_executor(None, lambda: flight_finder(parameters=args, player=self.ui))
                 result = r or "Done."
 
-            elif name == "shutdown_jarvis":
+            elif name == "shutdown_poison":
                 self.ui.write_log("SYS: Shutdown requested.")
                 self.speak("Goodbye, sir.")
                 def _shutdown():
@@ -693,7 +699,7 @@ class PoisonLive:
         if not self.ui.muted:
             self.ui.set_state("LISTENING")
 
-        print(f"[JARVIS] 📤 {name} → {result[:80]}")
+        print(f"[POISON] 📤 {name} → {result[:80]}")
         return types.FunctionResponse(
             id=fc.id, name=name,
             response={"result": result}
@@ -710,13 +716,13 @@ class PoisonLive:
             await session.send_realtime_input(media=msg)
 
     async def _listen_audio(self):
-        print("[JARVIS] 🎤 Mic started")
+        print("[POISON] 🎤 Mic started")
         loop = asyncio.get_event_loop()
 
         def callback(indata, frames, time_info, status):
             with self._speaking_lock:
-                jarvis_speaking = self._is_speaking
-            if not jarvis_speaking and not self.ui.muted:
+                poison_speaking = self._is_speaking
+            if not poison_speaking and not self.ui.muted:
                 data = indata.tobytes()
                 out_queue = self.out_queue
                 if out_queue is not None:
@@ -733,15 +739,15 @@ class PoisonLive:
                 blocksize=CHUNK_SIZE,
                 callback=callback,
             ):
-                print("[JARVIS] 🎤 Mic stream open")
+                print("[POISON] 🎤 Mic stream open")
                 while True:
                     await asyncio.sleep(0.1)
         except Exception as e:
-            print(f"[JARVIS] ❌ Mic: {e}")
+            print(f"[POISON] ❌ Mic: {e}")
             raise
 
     async def _receive_audio(self):
-        print("[JARVIS] 👂 Recv started")
+        print("[POISON] 👂 Recv started")
         out_buf, in_buf = [], []
         session = self.session
         audio_in_queue = self.audio_in_queue
@@ -787,19 +793,19 @@ class PoisonLive:
                     if response.tool_call:
                         fn_responses = []
                         for fc in response.tool_call.function_calls:
-                            print(f"[JARVIS] 📞 {fc.name}")
+                            print(f"[POISON] 📞 {fc.name}")
                             fr = await self._execute_tool(fc)
                             fn_responses.append(fr)
                         await session.send_tool_response(
                             function_responses=fn_responses
                         )
         except Exception as e:
-            print(f"[JARVIS] ❌ Recv: {e}")
+            print(f"[POISON] ❌ Recv: {e}")
             traceback.print_exc()
             raise
 
     async def _play_audio(self):
-        print("[JARVIS] 🔊 Play started")
+        print("[POISON] 🔊 Play started")
         audio_in_queue = self.audio_in_queue
         if audio_in_queue is None:
             return
@@ -831,7 +837,7 @@ class PoisonLive:
                 self.set_speaking(True)
                 await asyncio.to_thread(stream.write, chunk)
         except Exception as e:
-            print(f"[JARVIS] ❌ Play: {e}")
+            print(f"[POISON] ❌ Play: {e}")
             raise
         finally:
             self.set_speaking(False)
@@ -846,7 +852,7 @@ class PoisonLive:
 
         while True:
             try:
-                print("[JARVIS] 🔌 Connecting...")
+                print("[POISON] 🔌 Connecting...")
                 self.ui.set_state("THINKING")
                 config = self._build_config()
 
@@ -860,9 +866,9 @@ class PoisonLive:
                     self.out_queue      = asyncio.Queue(maxsize=10)
                     self._turn_done_event = asyncio.Event()
 
-                    print("[JARVIS] ✅ Connected.")
+                    print("[POISON] ✅ Connected.")
                     self.ui.set_state("LISTENING")
-                    self.ui.write_log("SYS: JARVIS online.")
+                    self.ui.write_log("SYS: POISON online.")
 
                     tg.create_task(self._send_realtime())
                     tg.create_task(self._listen_audio())
@@ -870,11 +876,11 @@ class PoisonLive:
                     tg.create_task(self._play_audio())
 
             except Exception as e:
-                print(f"[JARVIS] ⚠️ {e}")
+                print(f"[POISON] ⚠️ {e}")
                 traceback.print_exc()
             self.set_speaking(False)
             self.ui.set_state("THINKING")
-            print("[JARVIS] 🔄 Reconnecting in 3s...")
+            print("[POISON] 🔄 Reconnecting in 3s...")
             await asyncio.sleep(3)
 
 def main():

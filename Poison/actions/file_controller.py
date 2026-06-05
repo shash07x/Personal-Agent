@@ -89,7 +89,7 @@ def _format_size(b: int) -> str:
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if b < 1024:
             return f"{b:.1f} {unit}"
-        b /= 1024
+        b //= 1024
     return f"{b:.1f} TB"
 
 def _safe_trash(target: Path) -> str:
@@ -458,7 +458,7 @@ def get_file_info(path: str, name: str = "") -> str:
             "Type":      "Folder" if target.is_dir() else "File",
             "Size":      _format_size(stat.st_size),
             "Location":  str(target.parent),
-            "Created":   datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
+            "Created":   datetime.fromtimestamp(os.path.getctime(target)).strftime("%Y-%m-%d %H:%M"),
             "Modified":  datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
             "Extension": target.suffix or "—",
         }
@@ -468,7 +468,7 @@ def get_file_info(path: str, name: str = "") -> str:
         return f"Could not get file info: {e}"
 
 def file_controller(
-    parameters: dict = None,
+    parameters=None,
     response=None,
     player=None,
     session_memory=None,
