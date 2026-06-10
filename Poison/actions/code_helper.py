@@ -161,7 +161,7 @@ Description: {description}
 Code:"""
 
     response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
-    code     = _clean_code(response.text)
+    code     = _clean_code(response.text)  # type: ignore[arg-type]
     path     = _resolve_save_path(output_path, lang)
     _save_file(path, code)
     return code, path
@@ -184,7 +184,7 @@ Broken code:
 Fixed code:"""
 
     response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
-    return _clean_code(response.text)
+    return _clean_code(response.text)  # type: ignore[arg-type]
 
 
 def _run_file(path: Path, args: list, timeout: int) -> str:
@@ -316,7 +316,7 @@ Updated code:"""
 
     try:
         response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
-        edited   = _clean_code(response.text)
+        edited   = _clean_code(response.text)  # type: ignore[arg-type]
     except Exception as e:
         return f"Could not edit code: {e}"
 
@@ -348,7 +348,7 @@ Explanation:"""
 
     try:
         response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
-        return response.text.strip()
+        return response.text.strip()  # type: ignore[union-attr]
     except Exception as e:
         return f"Could not explain code: {e}"
 
@@ -395,7 +395,7 @@ Optimized code:"""
 
     try:
         response  = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
-        optimized = _clean_code(response.text)
+        optimized = _clean_code(response.text)  # type: ignore[arg-type]
     except Exception as e:
         return f"Could not optimize code: {e}"
 
@@ -476,7 +476,7 @@ Be specific and actionable. If you see an error message, quote it exactly."""
             contents=contents,
         )
 
-        analysis = response.text.strip()
+        analysis = response.text.strip()  # type: ignore[union-attr]
         print(f"[Code] ✅ Screen analysis complete")
 
         try:

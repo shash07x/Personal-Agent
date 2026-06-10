@@ -445,7 +445,7 @@ class _BrowserSession:
                 self._context = await engine_obj.launch_persistent_context(poison, **kwargs)
 
             await asyncio.sleep(0.5)  
-            self._page = await self._context.new_page()
+            self._page = await self._context.new_page()  # type: ignore[union-attr]
             print(f"[Browser] ✅ Firefox launched")
             return
 
@@ -460,7 +460,7 @@ class _BrowserSession:
             }
             self._context = await engine_obj.launch_persistent_context(safari_profile, **kwargs)
             await asyncio.sleep(0.5)
-            self._page = await self._context.new_page()
+            self._page = await self._context.new_page()  # type: ignore[union-attr]
             print(f"[Browser] ✅ Safari launched")
             return
 
@@ -494,7 +494,7 @@ class _BrowserSession:
         try:
             self._context = await engine_obj.launch_persistent_context(profile, **kwargs)
             await asyncio.sleep(0.5) 
-            self._page = await self._context.new_page()
+            self._page = await self._context.new_page()  # type: ignore[union-attr]
             print(f"[Browser] ✅ Launched [{label}] profile={profile}")
             return
         except Exception as e:
@@ -507,7 +507,7 @@ class _BrowserSession:
         try:
             self._context = await engine_obj.launch_persistent_context(poison_profile, **kwargs)
             await asyncio.sleep(0.5)
-            self._page = await self._context.new_page()
+            self._page = await self._context.new_page()  # type: ignore[union-attr]
             print(f"[Browser] ✅ Launched [{label}] with POISON profile")
         except Exception as e2:
             raise RuntimeError(f"Could not launch {self.browser_name}: {e2}") from e2
@@ -517,7 +517,7 @@ class _BrowserSession:
         await self._launch()
         # If somehow page got closed, open a fresh one
         if self._page is None or self._page.is_closed():
-            self._page = await self._context.new_page()
+            self._page = await self._context.new_page()  # type: ignore[union-attr]
             await asyncio.sleep(0.2)
         return self._page
 
@@ -543,7 +543,7 @@ class _BrowserSession:
         if result_url in ("about:blank", "", None, prev_url) and prev_url in ("about:blank", "", None):
             print(f"[Browser] Still blank after goto — retrying on new tab: {url}")
             try:
-                new_page   = await self._context.new_page()
+                new_page   = await self._context.new_page()  # type: ignore[union-attr]
                 self._page = new_page
                 result_url = await _do_goto(new_page)
             except Exception as e:
@@ -563,7 +563,7 @@ class _BrowserSession:
         base = _engines.get(engine.lower(), _engines["google"])
         return await self.go_to(base + query.replace(" ", "+"))
 
-    async def click(self, selector: str = None, text: str = None) -> str:
+    async def click(self, selector: str = None, text: str = None) -> str:  # type: ignore[arg-type]
         page = await self._get_page()
         try:
             if text:
@@ -578,7 +578,7 @@ class _BrowserSession:
         except Exception as e:
             return f"Click error: {e}"
 
-    async def type_text(self, selector: str = None, text: str = "",
+    async def type_text(self, selector: str = None, text: str = "",  # type: ignore[arg-type]
                         clear_first: bool = True) -> str:
         page = await self._get_page()
         try:
@@ -697,7 +697,7 @@ class _BrowserSession:
             return "Tab closed."
         return "No active tab to close."
 
-    async def screenshot(self, path: str = None) -> str:
+    async def screenshot(self, path: str = None) -> str:  # type: ignore[arg-type]
         page = await self._get_page()
         try:
             save_path = path or str(Path.home() / "Desktop" / "poison_screenshot.png")
@@ -802,7 +802,7 @@ class _SessionRegistry:
 _registry = _SessionRegistry()
 
 def browser_control(
-    parameters:    dict = None,
+    parameters:    dict = None,  # type: ignore[arg-type]
     response=None,
     player=None,
     session_memory=None,
@@ -841,10 +841,10 @@ def browser_control(
         elif action == "search":
             result = sess.run(sess.search(params.get("query", ""), params.get("engine", "google")))
         elif action == "click":
-            result = sess.run(sess.click(params.get("selector"), params.get("text")))
+            result = sess.run(sess.click(params.get("selector"), params.get("text")))  # type: ignore[arg-type]
         elif action == "type":
             result = sess.run(sess.type_text(
-                params.get("selector"), params.get("text", ""), params.get("clear_first", True)))
+                params.get("selector"), params.get("text", ""), params.get("clear_first", True)))  # type: ignore[arg-type]
         elif action == "scroll":
             result = sess.run(sess.scroll(params.get("direction", "down"), int(params.get("amount", 500))))
         elif action == "fill_form":
@@ -864,7 +864,7 @@ def browser_control(
         elif action == "close_tab":
             result = sess.run(sess.close_tab())
         elif action == "screenshot":
-            result = sess.run(sess.screenshot(params.get("path")))
+            result = sess.run(sess.screenshot(params.get("path")))  # type: ignore[arg-type]
         elif action == "back":
             result = sess.run(sess.back())
         elif action == "forward":

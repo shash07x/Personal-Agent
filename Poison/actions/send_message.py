@@ -45,21 +45,21 @@ def _paste_text(text: str) -> None:
     paste_hotkey = ("command", "v") if os_name == "mac" else ("ctrl", "v")
 
     if _PYPERCLIP:
-        pyperclip.copy(text)
+        pyperclip.copy(text)  # type: ignore[possibly-unbound]
         time.sleep(0.15)
-        pyautogui.hotkey(*paste_hotkey)
+        pyautogui.hotkey(*paste_hotkey)  # type: ignore[possibly-unbound]
         time.sleep(0.1)
     else:
-        pyautogui.write(text, interval=0.03)
+        pyautogui.write(text, interval=0.03)  # type: ignore[possibly-unbound]
 
 
 def _clear_and_paste(text: str) -> None:
     _require_pyautogui()
     os_name = _get_os()
     select_all = ("command", "a") if os_name == "mac" else ("ctrl", "a")
-    pyautogui.hotkey(*select_all)
+    pyautogui.hotkey(*select_all)  # type: ignore[possibly-unbound]
     time.sleep(0.1)
-    pyautogui.press("delete")
+    pyautogui.press("delete")  # type: ignore[possibly-unbound]
     time.sleep(0.1)
     _paste_text(text)
 
@@ -69,11 +69,11 @@ def _open_app(app_name: str) -> bool:
 
     try:
         if os_name == "windows":
-            pyautogui.press("win")
+            pyautogui.press("win")  # type: ignore[possibly-unbound]
             time.sleep(0.5)
             _paste_text(app_name)
             time.sleep(0.6)
-            pyautogui.press("enter")
+            pyautogui.press("enter")  # type: ignore[possibly-unbound]
             time.sleep(2.5)
             return True
 
@@ -129,7 +129,7 @@ def _search_in_app(query: str) -> None:
     os_name = _get_os()
     search_hotkey = ("command", "f") if os_name == "mac" else ("ctrl", "f")
 
-    pyautogui.hotkey(*search_hotkey)
+    pyautogui.hotkey(*search_hotkey)  # type: ignore[possibly-unbound]
     time.sleep(0.5)
     _clear_and_paste(query)
     time.sleep(1.0)
@@ -140,12 +140,12 @@ def _desktop_send(app_name: str, receiver: str, message: str) -> str:
 
     time.sleep(1.0)
     _search_in_app(receiver)
-    pyautogui.press("enter")
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]
     time.sleep(0.8)
 
     _paste_text(message)
     time.sleep(0.2)
-    pyautogui.press("enter")
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]
     time.sleep(0.3)
     return f"Message sent to {receiver} via {app_name}."
 
@@ -172,20 +172,20 @@ def _send_instagram(receiver: str, message: str) -> str:
     _paste_text(receiver)
     time.sleep(1.5)
 
-    pyautogui.press("down")
+    pyautogui.press("down")  # type: ignore[possibly-unbound]
     time.sleep(0.3)
-    pyautogui.press("enter")   
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]   
     time.sleep(0.4)
 
     for _ in range(4):
-        pyautogui.press("tab")
+        pyautogui.press("tab")  # type: ignore[possibly-unbound]
         time.sleep(0.15)
-    pyautogui.press("enter")
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]
     time.sleep(2.0)
 
     _paste_text(message)
     time.sleep(0.2)
-    pyautogui.press("enter")
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]
     time.sleep(0.3)
 
     return f"Message sent to {receiver} via Instagram."
@@ -200,14 +200,14 @@ def _send_messenger(receiver: str, message: str) -> str:
 
     _search_in_app(receiver)
     time.sleep(0.5)
-    pyautogui.press("down")
+    pyautogui.press("down")  # type: ignore[possibly-unbound]
     time.sleep(0.3)
-    pyautogui.press("enter")
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]
     time.sleep(1.0)
 
     _paste_text(message)
     time.sleep(0.2)
-    pyautogui.press("enter")
+    pyautogui.press("enter")  # type: ignore[possibly-unbound]
     time.sleep(0.3)
 
     return f"Message sent to {receiver} via Messenger."

@@ -82,7 +82,7 @@ def _file_size_str(path: Path) -> str:
     if size < 1024**3:     return f"{size/1024**2:.1f} MB"
     return f"{size/1024**3:.1f} GB"
 
-def _output_path(src: Path, suffix: str, new_ext: str = None) -> Path:
+def _output_path(src: Path, suffix: str, new_ext: str = None) -> Path:  # type: ignore[arg-type]
     ext  = new_ext or src.suffix
     name = f"{src.stem}_{suffix}{ext}"
     return src.parent / name
@@ -111,7 +111,7 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
                 prompt = params["instruction"]
 
             response = model.generate_content([prompt, img])
-            result   = response.text.strip()
+            result   = response.text.strip()  # type: ignore[union-attr]
 
             if len(result) > 500 and params.get("save", True):
                 out = _output_path(path, "result", ".txt")
@@ -139,7 +139,7 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
             else:
                 return "Please specify width, height, or scale."
             out = _output_path(path, f"resized_{new_size[0]}x{new_size[1]}")
-            img.resize(new_size, Image.LANCZOS).save(out)
+            img.resize(new_size, Image.LANCZOS).save(out)  # type: ignore[attr-defined]
             return f"Resized from {w}x{h} to {new_size[0]}x{new_size[1]}. Saved: {out.name}"
         except Exception as e:
             return f"Resize failed: {e}"
@@ -185,13 +185,13 @@ def _process_pdf(path: Path, action: str, params: dict, speak=None) -> str:
     def _extract_pdf_text(max_chars=50000) -> str:
         text = ""
         try:
-            import pdfplumber
+            import pdfplumber  # type: ignore[import-untyped]
             with pdfplumber.open(path) as pdf:
                 for page in pdf.pages:
                     text += (page.extract_text() or "") + "\n"
         except ImportError:
             try:
-                import PyPDF2
+                import PyPDF2  # type: ignore[import-untyped]
                 with open(path, "rb") as f:
                     reader = PyPDF2.PdfReader(f)
                     for page in reader.pages:
@@ -219,7 +219,7 @@ def _process_pdf(path: Path, action: str, params: dict, speak=None) -> str:
         try:
             model    = _gemini_client()
             response = model.generate_content(prompt_map.get(action, f"Analyze:\n\n{text}"))
-            result   = response.text.strip()
+            result   = response.text.strip()  # type: ignore[union-attr]
             if len(result) > 600 and params.get("save", True):
                 out = _output_path(path, action, ".txt")
                 out.write_text(result, encoding="utf-8")
@@ -230,7 +230,7 @@ def _process_pdf(path: Path, action: str, params: dict, speak=None) -> str:
 
     if action == "info":
         try:
-            import pdfplumber
+            import pdfplumber  # type: ignore[import-untyped]
             with pdfplumber.open(path) as pdf:
                 pages = len(pdf.pages)
             return f"PDF: {pages} pages, size: {_file_size_str(path)}"
@@ -242,7 +242,7 @@ def _process_pdf(path: Path, action: str, params: dict, speak=None) -> str:
         if not text:
             return "Could not extract text to convert."
         try:
-            from docx import Document
+            from docx import Document  # type: ignore[import-untyped]
             doc  = Document()
             doc.add_heading(path.stem, 0)
             for para in text.split("\n\n"):
@@ -263,7 +263,7 @@ def _process_text_doc(path: Path, file_type: str, action: str,
     def _read_content() -> str:
         if file_type == "docx":
             try:
-                from docx import Document
+                from docx import Document  # type: ignore[import-untyped]
                 doc  = Document(path)
                 return "\n".join(p.text for p in doc.paragraphs)
             except ImportError:
@@ -309,7 +309,7 @@ def _process_text_doc(path: Path, file_type: str, action: str,
     try:
         model    = _gemini_client()
         response = model.generate_content(prompt_map[action])
-        result   = response.text.strip()
+        result   = response.text.strip()  # type: ignore[union-attr]
         if len(result) > 600 and params.get("save", True):
             out = _output_path(path, action, ".txt")
             out.write_text(result, encoding="utf-8")
@@ -322,7 +322,7 @@ def _process_text_doc(path: Path, file_type: str, action: str,
 def _process_data(path: Path, file_type: str, action: str,
                   params: dict, speak=None) -> str:
     try:
-        import pandas as pd
+        import pandas as pd  # type: ignore[import-untyped]
     except ImportError:
         return "pandas not installed. Run: pip install pandas openpyxl"
 
@@ -356,7 +356,7 @@ def _process_data(path: Path, file_type: str, action: str,
         try:
             model    = _gemini_client()
             response = model.generate_content(prompt)
-            return response.text.strip()
+            return response.text.strip()  # type: ignore[union-attr]
         except Exception as e:
             return f"AI analysis failed: {e}"
 
@@ -373,7 +373,7 @@ def _process_data(path: Path, file_type: str, action: str,
             elif fmt == "json":
                 out = _output_path(path, "converted", ".json")
                 df.to_json(out, orient="records", force_ascii=False, indent=2)
-            return f"Converted to {fmt.upper()}. Saved: {out.name}"
+            return f"Converted to {fmt.upper()}. Saved: {out.name}"  # type: ignore[possibly-unbound]
         except Exception as e:
             return f"Convert failed: {e}"
 
@@ -412,7 +412,7 @@ def _process_data(path: Path, file_type: str, action: str,
         response = model.generate_content(
             f"Task: {action}\nDataset ({len(df)} rows, cols: {list(df.columns)}):\n{preview}"
         )
-        return response.text.strip()
+        return response.text.strip()  # type: ignore[union-attr]
     except Exception as e:
         return f"Processing failed: {e}"
 
@@ -441,13 +441,13 @@ def _process_json(path: Path, action: str, params: dict, speak=None) -> str:
         try:
             model    = _gemini_client()
             response = model.generate_content(prompt)
-            return response.text.strip()
+            return response.text.strip()  # type: ignore[union-attr]
         except Exception as e:
             return f"AI processing failed: {e}"
 
     if action == "to_csv":
         try:
-            import pandas as pd
+            import pandas as pd  # type: ignore[import-untyped]
             if isinstance(data, list):
                 df  = pd.DataFrame(data)
                 out = _output_path(path, "converted", ".csv")
@@ -505,7 +505,7 @@ def _process_code(path: Path, action: str, params: dict, speak=None) -> str:
     try:
         model    = _gemini_client()
         response = model.generate_content(prompt)
-        result   = response.text.strip()
+        result   = response.text.strip()  # type: ignore[union-attr]
 
         if action in ("fix", "optimize", "document") and params.get("save", True):
             out = _output_path(path, action)
@@ -522,7 +522,7 @@ def _process_audio(path: Path, action: str, params: dict, speak=None) -> str:
 
     if action == "info":
         try:
-            from pydub import AudioSegment
+            from pydub import AudioSegment  # type: ignore[import-untyped]
             audio    = AudioSegment.from_file(path)
             duration = len(audio) / 1000
             mins, secs = divmod(int(duration), 60)
@@ -548,7 +548,7 @@ def _process_audio(path: Path, action: str, params: dict, speak=None) -> str:
                 "Transcribe all speech in this audio file accurately.",
                 {"mime_type": mime, "data": content}
             ])
-            result = response.text.strip()
+            result   = response.text.strip()  # type: ignore[union-attr]
             if params.get("save", True):
                 out = _output_path(path, "transcript", ".txt")
                 out.write_text(result, encoding="utf-8")
@@ -560,7 +560,7 @@ def _process_audio(path: Path, action: str, params: dict, speak=None) -> str:
     if action == "convert":
         fmt = params.get("format", "mp3").lstrip(".")
         try:
-            from pydub import AudioSegment
+            from pydub import AudioSegment  # type: ignore[import-untyped]
             audio = AudioSegment.from_file(path)
             out   = _output_path(path, "converted", f".{fmt}")
             audio.export(out, format=fmt)
@@ -574,7 +574,7 @@ def _process_audio(path: Path, action: str, params: dict, speak=None) -> str:
         start = float(params.get("start", 0))
         end   = float(params.get("end",   0))
         try:
-            from pydub import AudioSegment
+            from pydub import AudioSegment  # type: ignore[import-untyped]
             audio   = AudioSegment.from_file(path)
             end_ms  = int(end * 1000)   if end   else len(audio)
             trimmed = audio[int(start * 1000):end_ms]
@@ -755,13 +755,13 @@ def _process_pptx(path: Path, action: str, params: dict, speak=None) -> str:
     def _read_pptx_text() -> str:
         try:
             from pptx import Presentation
-            prs  = Presentation(path)
+            prs  = Presentation(path)  # type: ignore[arg-type]
             text = []
             for i, slide in enumerate(prs.slides, 1):
                 slide_text = f"\n--- Slide {i} ---\n"
                 for shape in slide.shapes:
-                    if hasattr(shape, "text") and shape.text.strip():
-                        slide_text += shape.text.strip() + "\n"
+                    if hasattr(shape, "text") and shape.text.strip():  # type: ignore[attr-defined]
+                        slide_text += shape.text.strip() + "\n"  # type: ignore[attr-defined]
                 text.append(slide_text)
             return "\n".join(text)
         except ImportError:
@@ -777,7 +777,7 @@ def _process_pptx(path: Path, action: str, params: dict, speak=None) -> str:
             model    = _gemini_client()
             prompt   = f"{'Summarize' if action == 'summarize' else 'Analyze'} this presentation:\n{text[:30000]}"
             response = model.generate_content(prompt)
-            return response.text.strip()
+            return response.text.strip()  # type: ignore[union-attr]
         except Exception as e:
             return f"AI processing failed: {e}"
 
@@ -810,7 +810,7 @@ def file_processor(parameters: dict, player=None, speak=None) -> str:
             model   = _gemini_client()
             prompt  = f"File: {path.name}\nContent preview:\n{content}\n\nTask: {action or instruction or 'Describe what this file contains and what can be done with it.'}"
             response = model.generate_content(prompt)
-            return response.text.strip()
+            return response.text.strip()  # type: ignore[union-attr]
         except Exception as e:
             return f"Unknown file type ({path.suffix}). Could not process: {e}"
 

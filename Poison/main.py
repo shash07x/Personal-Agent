@@ -6,6 +6,32 @@ import sys
 import traceback
 from pathlib import Path
 
+# Workaround for Python 3.14 ProactorEventLoop bug on Windows:
+# loop.create_connection() hangs due to Proactor I/O issues.
+# Fix: create TCP sockets in a thread executor instead.
+import asyncio.windows_events as _asyncio_we
+import socket as _socket
+
+_orig_create_connection = _asyncio_we.ProactorEventLoop.create_connection
+
+async def _patched_create_connection(self, protocol_factory, **kwargs):
+    if "host" in kwargs and "port" in kwargs and "sock" not in kwargs:
+        host = kwargs.pop("host")
+        port = kwargs.pop("port")
+
+        def _make_socket():
+            s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+            s.settimeout(30)
+            s.connect((host, port))
+            s.settimeout(None)
+            s.setblocking(False)
+            return s
+
+        kwargs["sock"] = await self.run_in_executor(None, _make_socket)
+    return await _orig_create_connection(self, protocol_factory, **kwargs)
+
+_asyncio_we.ProactorEventLoop.create_connection = _patched_create_connection
+
 import sounddevice as sd
 from google import genai
 from google.genai import types
@@ -43,7 +69,7 @@ def get_base_dir():
 BASE_DIR        = get_base_dir()
 API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
 PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
-LIVE_MODEL          = "models/gemini-2.5-flash-native-audio-preview-12-2025"
+LIVE_MODEL          = "models/gemini-2.5-flash-native-audio-latest"
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000
 RECEIVE_SAMPLE_RATE = 24000
@@ -555,11 +581,11 @@ class PoisonLive:
             session_resumption = None
 
         return types.LiveConnectConfig(
-            response_modalities=["AUDIO"],
+            response_modalities=["AUDIO"],  # type: ignore[arg-type]
             output_audio_transcription=types.AudioTranscriptionConfig(),
             input_audio_transcription=types.AudioTranscriptionConfig(),
             system_instruction="\n".join(parts),
-            tools=[types.Tool(function_declarations=TOOL_DECLARATIONS)],
+            tools=[types.Tool(function_declarations=TOOL_DECLARATIONS)],  # type: ignore[arg-type]
             session_resumption=session_resumption,
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
@@ -792,7 +818,7 @@ class PoisonLive:
 
                     if response.tool_call:
                         fn_responses = []
-                        for fc in response.tool_call.function_calls:
+                        for fc in response.tool_call.function_calls:  # type: ignore[union-attr]
                             print(f"[POISON] 📞 {fc.name}")
                             fr = await self._execute_tool(fc)
                             fn_responses.append(fr)
@@ -885,9 +911,9 @@ class PoisonLive:
 
 def main():
     if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     ui = PoisonUI("face.png")
 
     def runner():

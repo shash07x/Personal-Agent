@@ -146,7 +146,7 @@ def _user_profile() -> dict:
 def _type(text: str, interval: float = 0.03) -> str:
     _require_pyautogui()
     time.sleep(0.3)
-    pyautogui.typewrite(text, interval=interval)
+    pyautogui.typewrite(text, interval=interval)  # type: ignore[possibly-unbound]
     return f"Typed: {text[:60]}{'…' if len(text) > 60 else ''}"
 
 
@@ -157,33 +157,33 @@ def _smart_type(text: str, clear_first: bool = True) -> str:
         time.sleep(0.1)
 
     if len(text) > 20 and _PYPERCLIP:
-        pyperclip.copy(text)
+        pyperclip.copy(text)  # type: ignore[possibly-unbound]
         time.sleep(0.1)
-        pyautogui.hotkey("ctrl", "v")
+        pyautogui.hotkey("ctrl", "v")  # type: ignore[possibly-unbound]
         return f"Smart-typed (clipboard): {text[:60]}{'…' if len(text) > 60 else ''}"
 
-    pyautogui.typewrite(text, interval=0.04)
+    pyautogui.typewrite(text, interval=0.04)  # type: ignore[possibly-unbound]
     return f"Smart-typed: {text[:60]}{'…' if len(text) > 60 else ''}"
 
 
 def _click(x=None, y=None, button: str = "left", clicks: int = 1) -> str:
     _require_pyautogui()
     if x is not None and y is not None:
-        pyautogui.click(x, y, button=button, clicks=clicks)
+        pyautogui.click(x, y, button=button, clicks=clicks)  # type: ignore[possibly-unbound]
         return f"{'Double-c' if clicks == 2 else 'C'}licked ({x}, {y}) [{button}]"
-    pyautogui.click(button=button, clicks=clicks)
+    pyautogui.click(button=button, clicks=clicks)  # type: ignore[possibly-unbound]
     return f"Clicked at current position [{button}]"
 
 
 def _hotkey(*keys) -> str:
     _require_pyautogui()
-    pyautogui.hotkey(*keys)
+    pyautogui.hotkey(*keys)  # type: ignore[possibly-unbound]
     return f"Hotkey: {'+'.join(keys)}"
 
 
 def _press(key: str) -> str:
     _require_pyautogui()
-    pyautogui.press(key)
+    pyautogui.press(key)  # type: ignore[possibly-unbound]
     return f"Pressed: {key}"
 
 
@@ -191,26 +191,26 @@ def _scroll(direction: str = "down", amount: int = 3) -> str:
     _require_pyautogui()
     vertical   = direction in ("up", "down")
     clicks     = amount if direction in ("up", "right") else -amount
-    pyautogui.scroll(clicks) if vertical else pyautogui.hscroll(clicks)
+    pyautogui.scroll(clicks) if vertical else pyautogui.hscroll(clicks)  # type: ignore[possibly-unbound]
     return f"Scrolled {direction} ×{amount}"
 
 
 def _move(x: int, y: int, duration: float = 0.3) -> str:
     _require_pyautogui()
-    pyautogui.moveTo(x, y, duration=duration)
+    pyautogui.moveTo(x, y, duration=duration)  # type: ignore[possibly-unbound]
     return f"Mouse → ({x}, {y})"
 
 
 def _drag(x1: int, y1: int, x2: int, y2: int, duration: float = 0.5) -> str:
     _require_pyautogui()
-    pyautogui.moveTo(x1, y1, duration=0.2)
-    pyautogui.dragTo(x2, y2, duration=duration, button="left")
+    pyautogui.moveTo(x1, y1, duration=0.2)  # type: ignore[possibly-unbound]
+    pyautogui.dragTo(x2, y2, duration=duration, button="left")  # type: ignore[possibly-unbound]
     return f"Dragged ({x1},{y1}) → ({x2},{y2})"
 
 
 def _clipboard_get() -> str:
     if _PYPERCLIP:
-        return pyperclip.paste()
+        return pyperclip.paste()  # type: ignore[possibly-unbound]
     _hotkey("ctrl", "c")
     time.sleep(0.2)
     return "(copied — pyperclip unavailable for read)"
@@ -218,10 +218,10 @@ def _clipboard_get() -> str:
 
 def _clipboard_paste(text: str) -> str:
     if _PYPERCLIP:
-        pyperclip.copy(text)
+        pyperclip.copy(text)  # type: ignore[possibly-unbound]
         time.sleep(0.1)
         _require_pyautogui()
-        pyautogui.hotkey("ctrl", "v")
+        pyautogui.hotkey("ctrl", "v")  # type: ignore[possibly-unbound]
         return f"Pasted: {text[:60]}{'…' if len(text) > 60 else ''}"
     return "pyperclip not available"
 
@@ -229,16 +229,16 @@ def _clipboard_paste(text: str) -> str:
 def _screenshot(save_path: str | None = None) -> str:
     _require_pyautogui()
     path = _safe_screenshot_path(save_path)
-    img  = pyautogui.screenshot()
+    img  = pyautogui.screenshot()  # type: ignore[possibly-unbound]
     img.save(str(path))
     return f"Screenshot saved: {path}"
 
 
 def _clear_field() -> str:
     _require_pyautogui()
-    pyautogui.hotkey("ctrl", "a")
+    pyautogui.hotkey("ctrl", "a")  # type: ignore[possibly-unbound]
     time.sleep(0.1)
-    pyautogui.press("delete")
+    pyautogui.press("delete")  # type: ignore[possibly-unbound]
     return "Field cleared"
 
 def _focus_window(title: str) -> str:
@@ -307,8 +307,8 @@ def _screen_find(description: str) -> tuple[int, int] | None:
         from google.genai import types as gtypes
 
         _require_pyautogui()
-        w, h  = pyautogui.size()
-        img   = pyautogui.screenshot()
+        w, h  = pyautogui.size()  # type: ignore[possibly-unbound]
+        img   = pyautogui.screenshot()  # type: ignore[possibly-unbound]
         buf   = io.BytesIO()
         img.save(buf, format="PNG")
         image_bytes = buf.getvalue()

@@ -187,17 +187,18 @@ class _SysMetrics:
 
     def _get_temp(self) -> float:
         try:
-            temps = psutil.sensors_temperatures()
-            candidates = ["coretemp", "k10temp", "cpu_thermal", "acpitz",
-                          "cpu-thermal", "zenpower", "it8688"]
-            for name in candidates:
-                if name in temps:
-                    entries = temps[name]
+            if hasattr(psutil, "sensors_temperatures"):
+                temps = psutil.sensors_temperatures()  # type: ignore[attr-defined]
+                candidates = ["coretemp", "k10temp", "cpu_thermal", "acpitz",
+                              "cpu-thermal", "zenpower", "it8688"]
+                for name in candidates:
+                    if name in temps:
+                        entries = temps[name]
+                        if entries:
+                            return entries[0].current
+                for entries in temps.values():
                     if entries:
                         return entries[0].current
-            for entries in temps.values():
-                if entries:
-                    return entries[0].current
         except Exception:
             pass
         if _OS == "Darwin":
@@ -278,7 +279,8 @@ class HudCanvas(QWidget):
             import io
             img = Image.open(path).convert("RGBA")
             sz  = min(img.size)
-            img = img.resize((sz, sz), Image.LANCZOS)
+            _lanczos = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BICUBIC)  # type: ignore[attr-defined]
+            img = img.resize((sz, sz), _lanczos)
             mk  = Image.new("L", (sz, sz), 0)
             ImageDraw.Draw(mk).ellipse((2, 2, sz - 2, sz - 2), fill=255)
             img.putalpha(mk)
@@ -342,7 +344,7 @@ class HudCanvas(QWidget):
             self._blink_tick = 0
         self.update()
 
-    def paintEvent(self, _):
+    def paintEvent(self, a0):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.fillRect(self.rect(), qcol(C.BG))
@@ -387,7 +389,7 @@ class HudCanvas(QWidget):
             angle = base
             rect  = QRectF(cx - ring_r, cy - ring_r, ring_r * 2, ring_r * 2)
             while angle < base + 360:
-                p.drawArc(rect, int(angle * 16), int(arc_l * 16))
+                p.drawArc(rect, round(angle * 16), arc_l * 16)
                 angle += arc_l + gap
 
         # scanners
@@ -397,9 +399,9 @@ class HudCanvas(QWidget):
         p.setPen(QPen(qcol(C.MUTED_C if self.muted else C.PRI, sa), 2.5))
         p.setBrush(Qt.BrushStyle.NoBrush)
         srect = QRectF(cx - sr, cy - sr, sr * 2, sr * 2)
-        p.drawArc(srect, int(self._scan * 16), int(ex * 16))
+        p.drawArc(srect, round(self._scan * 16), ex * 16)
         p.setPen(QPen(qcol(C.ACC, sa // 2), 1.5))
-        p.drawArc(srect, int(self._scan2 * 16), int(ex * 16))
+        p.drawArc(srect, round(self._scan2 * 16), ex * 16)
 
         # tick marks
         t_out, t_in = fw * 0.497, fw * 0.474
@@ -515,7 +517,7 @@ class MetricBar(QWidget):
         self._text  = text
         self.update()
 
-    def paintEvent(self, _):
+    def paintEvent(self, a0):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         W, H = self.width(), self.height()
@@ -697,31 +699,36 @@ class FileDropZone(QWidget):
         self._dash_offset = (self._dash_offset + 0.8) % 20
         self._canvas.update()
 
-    def dragEnterEvent(self, e: QDragEnterEvent):
-        if e.mimeData().hasUrls():
-            e.acceptProposedAction()
+    def dragEnterEvent(self, a0: QDragEnterEvent | None = None) -> None:  # type: ignore[override]
+        if a0 is None: return
+        md = a0.mimeData()
+        if md is not None and md.hasUrls():
+            a0.acceptProposedAction()
             self._drag_over = True; self._canvas.update()
 
-    def dragLeaveEvent(self, e):
+    def dragLeaveEvent(self, a0=None):  # type: ignore[override]
         self._drag_over = False; self._canvas.update()
 
-    def dropEvent(self, e: QDropEvent):
+    def dropEvent(self, a0: QDropEvent | None = None) -> None:  # type: ignore[override]
         self._drag_over = False
-        urls = e.mimeData().urls()
-        if urls:
-            path = urls[0].toLocalFile()
-            if Path(path).is_file():
-                self._set_file(path)
+        if a0 is not None:
+            md = a0.mimeData()
+            if md is not None:
+                urls = md.urls()
+                if urls:
+                    path = urls[0].toLocalFile()
+                    if Path(path).is_file():
+                        self._set_file(path)
         self._canvas.update()
 
-    def mousePressEvent(self, e):
-        if e.button() == Qt.MouseButton.LeftButton:
+    def mousePressEvent(self, a0=None):  # type: ignore[override]
+        if a0 is not None and hasattr(a0, 'button') and a0.button() == Qt.MouseButton.LeftButton:
             self._browse()
 
-    def enterEvent(self, e):
+    def enterEvent(self, event=None):  # type: ignore[override]
         self._hovering = True; self._canvas.update()
 
-    def leaveEvent(self, e):
+    def leaveEvent(self, a0=None):  # type: ignore[override]
         self._hovering = False; self._canvas.update()
 
     def current_file(self) -> str | None:
@@ -756,7 +763,7 @@ class _DropCanvas(QWidget):
         super().__init__(zone)
         self._z = zone
 
-    def paintEvent(self, _):
+    def paintEvent(self, a0):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         z    = self._z
@@ -809,10 +816,15 @@ class _DropCanvas(QWidget):
         p.drawText(QRectF(0, cy + 12, W, 16), Qt.AlignmentFlag.AlignCenter, "Release to load")
 
     def _paint_file(self, p, W, H):
+        if self._z._current_file is None:
+            return
         path = Path(self._z._current_file)
         cat  = _file_category(path)
         icon, icon_col = _FILE_ICONS.get(cat, _FILE_ICONS["unknown"])
-        size_str = _fmt_size(path.stat().st_size)
+        try:
+            size_str = _fmt_size(path.stat().st_size)
+        except OSError:
+            size_str = "?"
         ext_str  = path.suffix.upper().lstrip(".") or "FILE"
 
         block_x, block_w = 10, 60
@@ -846,12 +858,12 @@ class _DropCanvas(QWidget):
         p.setPen(QPen(qcol(C.RED, 180), 1))
         p.drawText(QRectF(W - 34, 0, 28, H), Qt.AlignmentFlag.AlignCenter, "✕")
 
-    def mousePressEvent(self, e):
+    def mousePressEvent(self, a0=None):  # type: ignore[override]
         z = self._z
-        if z._current_file and e.pos().x() > self.width() - 34:
+        if a0 is not None and hasattr(a0, 'pos') and z._current_file and a0.pos().x() > self.width() - 34:
             z.clear_file()
         else:
-            z.mousePressEvent(e)
+            z.mousePressEvent(a0)
 
 
 class SetupOverlay(QWidget):
@@ -993,11 +1005,13 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(_MIN_W, _MIN_H)
         self.resize(_DEFAULT_W, _DEFAULT_H)
 
-        screen = QApplication.primaryScreen().availableGeometry()
-        self.move(
-            (screen.width()  - _DEFAULT_W) // 2,
-            (screen.height() - _DEFAULT_H) // 2,
-        )
+        _primary = QApplication.primaryScreen()
+        if _primary is not None:
+            screen = _primary.availableGeometry()
+            self.move(
+                (screen.width()  - _DEFAULT_W) // 2,
+                (screen.height() - _DEFAULT_H) // 2,
+            )
 
         self.on_text_command  = None
         self._muted           = False
@@ -1059,16 +1073,17 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
+    def resizeEvent(self, a0=None):  # type: ignore[override]
+        super().resizeEvent(a0)  # type: ignore[arg-type]
         if self._overlay and self._overlay.isVisible():
             ow, oh = 460, 390
             cw = self.centralWidget()
-            self._overlay.setGeometry(
-                (cw.width()  - ow) // 2,
-                (cw.height() - oh) // 2,
-                ow, oh,
-            )
+            if cw is not None:
+                self._overlay.setGeometry(
+                    (cw.width()  - ow) // 2,
+                    (cw.height() - oh) // 2,
+                    ow, oh,
+                )
 
     def _update_metrics(self):
         snap = _metrics.snapshot()
@@ -1424,11 +1439,12 @@ class MainWindow(QMainWindow):
         ov = SetupOverlay(self.centralWidget())
         cw = self.centralWidget()
         ow, oh = 460, 390
-        ov.setGeometry(
-            (cw.width()  - ow) // 2,
-            (cw.height() - oh) // 2,
-            ow, oh,
-        )
+        if cw is not None:
+            ov.setGeometry(
+                (cw.width()  - ow) // 2,
+                (cw.height() - oh) // 2,
+                ow, oh,
+            )
         ov.done.connect(self._on_setup_done)
         ov.show()
         self._overlay = ov
@@ -1457,7 +1473,10 @@ class _RootShim:
 
 class PoisonUI:
     def __init__(self, face_path: str, size=None):
-        self._app = QApplication.instance() or QApplication(sys.argv)
+        app = QApplication.instance()
+        if not isinstance(app, QApplication):
+            app = QApplication(sys.argv)
+        self._app: QApplication = app
         self._app.setStyle("Fusion")
         self._win = MainWindow(face_path)
         self._win.show()

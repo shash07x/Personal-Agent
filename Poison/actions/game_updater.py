@@ -501,7 +501,7 @@ def _search_steam_appid(game_name: str) -> tuple[str | None, str | None]:
 
     return None, None
 
-def _update_steam_games(steam_path: Path, game_name: str = None) -> str:
+def _update_steam_games(steam_path: Path, game_name: str = None) -> str:  # type: ignore[arg-type]
     if not _ensure_steam_running(steam_path):
         return "Could not start Steam."
 
@@ -553,8 +553,8 @@ def _update_steam_games(steam_path: Path, game_name: str = None) -> str:
         parts.append(f"Errors: {'; '.join(errors)}.")
     return " ".join(parts) if parts else "No games to update."
 
-def _install_steam_game(steam_path: Path, game_name: str = None,
-                        app_id: str = None) -> str:
+def _install_steam_game(steam_path: Path, game_name: str = None,  # type: ignore[arg-type]
+                        app_id: str = None) -> str:  # type: ignore[arg-type]
     if not _ensure_steam_running(steam_path):
         return "Could not start Steam."
 
@@ -747,7 +747,7 @@ def _is_epic_running() -> bool:
         return False
 
 
-def _update_epic_games(epic_exe: Path, game_name: str = None) -> str:
+def _update_epic_games(epic_exe: Path, game_name: str = None) -> str:  # type: ignore[arg-type]
     games = _get_epic_games()
 
     if game_name:
@@ -989,7 +989,7 @@ def game_updater(parameters: dict, player=None, speak=None) -> str:
                     )
                     if not is_installed:
                         msg = _install_steam_game(
-                            steam_path, game_name=game_name, app_id=app_id
+                            steam_path, game_name=game_name, app_id=app_id  # type: ignore[arg-type]
                         )
                         if shutdown:
                             threading.Thread(
@@ -1028,7 +1028,7 @@ def game_updater(parameters: dict, player=None, speak=None) -> str:
                 epic_exe = _find_epic_exe()
                 if epic_exe:
                     results.append(
-                        f"Epic: {_update_epic_games(epic_exe, game_name=game_name)}"
+                        f"Epic: {_update_epic_games(epic_exe, game_name=game_name)}"  # type: ignore[arg-type]
                     )
                 else:
                     results.append("Epic: Not installed.")

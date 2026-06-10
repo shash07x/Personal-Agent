@@ -73,7 +73,7 @@ def _scrape_first_video_url(query: str) -> str | None:
     )
 
     try:
-        r    = requests.get(search_url, headers=HEADERS, timeout=10)
+        r    = requests.get(search_url, headers=HEADERS, timeout=10)  # type: ignore[possibly-unbound]
         html = r.text
 
         video_ids = re.findall(r'"videoId":"([A-Za-z0-9_-]{11})"', html)
@@ -109,7 +109,7 @@ def _ask_for_url(prompt_text: str = "YouTube video URL:") -> str | None:
         import tkinter as tk
         from tkinter import simpledialog
 
-        root = tk._default_root
+        root = tk._default_root  # type: ignore[attr-defined]
         if root is None:
             root = tk.Tk()
             root.withdraw()
@@ -125,7 +125,7 @@ def _get_transcript(video_id: str) -> str | None:
     if not _TRANSCRIPT_OK:
         return None
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)  # type: ignore[possibly-unbound, attr-defined]
         transcript      = None
 
         lang_priority = ["en", "tr", "de", "fr", "es", "it", "pt", "ru", "ja", "ko", "ar", "zh"]
@@ -174,7 +174,7 @@ def _summarize_with_gemini(transcript: str, video_url: str) -> str:
             )
         )
     )
-    return response.text.strip()
+    return response.text.strip()  # type: ignore[union-attr]
 
 
 def _save_summary(content: str, video_url: str) -> str:
@@ -211,7 +211,7 @@ def _scrape_video_info(video_id: str) -> dict:
         return {}
     url = f"https://www.youtube.com/watch?v={video_id}"
     try:
-        r    = requests.get(url, headers=HEADERS, timeout=12)
+        r    = requests.get(url, headers=HEADERS, timeout=12)  # type: ignore[possibly-unbound]
         html = r.text
         info = {}
 
@@ -244,7 +244,7 @@ def _scrape_trending(region: str = "TR", max_results: int = 8) -> list[dict]:
         return []
     url = f"https://www.youtube.com/feed/trending?gl={region.upper()}"
     try:
-        r    = requests.get(url, headers=HEADERS, timeout=12)
+        r    = requests.get(url, headers=HEADERS, timeout=12)  # type: ignore[possibly-unbound]
         html = r.text
 
         titles   = re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"\}\]', html)

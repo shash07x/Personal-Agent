@@ -100,7 +100,7 @@ def _safe_trash(target: Path) -> str:
             "Run: pip install send2trash — "
             "Permanent deletion is disabled for safety."
         )
-    send2trash.send2trash(str(target))
+    send2trash.send2trash(str(target))  # type: ignore[possibly-unbound]
     return f"Moved to Trash: {target.name}"
 
 

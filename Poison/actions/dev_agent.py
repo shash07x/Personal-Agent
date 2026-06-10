@@ -135,10 +135,10 @@ JSON:"""
 
     try:
         response = client.models.generate_content(model=MODEL_PLANNER, contents=prompt)
-        raw = _strip_fences(response.text)
+        raw = _strip_fences(response.text)  # type: ignore[arg-type]
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Planner returned invalid JSON: {e}\nRaw: {response.text[:300]}")
+        raise ValueError(f"Planner returned invalid JSON: {e}\nRaw: {response.text[:300]}")  # type: ignore[index, possibly-unbound]
     except Exception as e:
         if _is_rate_limit(e):
             raise RateLimitError(str(e))
@@ -214,7 +214,7 @@ Code for {file_path}:"""
 
     try:
         response = client.models.generate_content(model=MODEL_WRITER, contents=prompt)
-        code = _strip_fences(response.text)
+        code = _strip_fences(response.text)  # type: ignore[arg-type]
 
         full_path = project_dir / file_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -412,7 +412,7 @@ Fixed code for {fix_path}:"""
 
         try:
             response = client.models.generate_content(model=MODEL_PLANNER, contents=prompt)
-            fixed = _strip_fences(response.text)
+            fixed = _strip_fences(response.text)  # type: ignore[arg-type]
 
             full_path = project_dir / fix_path
             full_path.parent.mkdir(parents=True, exist_ok=True)

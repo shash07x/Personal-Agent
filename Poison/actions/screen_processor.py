@@ -33,6 +33,20 @@ try:
 except ImportError:
     _PIL = False
 
+# Workaround: Python 3.14 ProactorEventLoop socket bug
+import asyncio.windows_events as _sw_we
+import socket as _sw_sock
+_sw_orig = _sw_we.ProactorEventLoop.create_connection
+async def _sw_patched(self, protocol_factory, host=None, port=None, **kwargs):
+    if host is not None and port is not None and "sock" not in kwargs:
+        def _mk():
+            s = _sw_sock.socket(_sw_sock.AF_INET, _sw_sock.SOCK_STREAM)
+            s.settimeout(30); s.connect((host, port)); s.settimeout(None); s.setblocking(False)
+            return s
+        kwargs["sock"] = await self.run_in_executor(None, _mk)
+    return await _sw_orig(self, protocol_factory, host, port, **kwargs)
+_sw_we.ProactorEventLoop.create_connection = _sw_patched
+
 from google import genai
 from google.genai import types as gtypes
 
@@ -75,7 +89,7 @@ def _get_os() -> str:
 def _get_voice() -> str:
     return _load_config().get("voice_name", "Charon")
 
-_LIVE_MODEL         = "models/gemini-2.5-flash-native-audio-preview-12-2025"
+_LIVE_MODEL         = "models/gemini-2.5-flash-native-audio-latest"
 _CHANNELS           = 1
 _RECEIVE_SAMPLE_RATE = 24_000
 _CHUNK_SIZE         = 1_024
@@ -99,8 +113,8 @@ def _compress(img_bytes: bytes, source_format: str = "PNG") -> tuple[bytes, str]
         return img_bytes, f"image/{source_format.lower()}"
 
     try:
-        img = PIL.Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        img.thumbnail((_IMG_MAX_W, _IMG_MAX_H), PIL.Image.BILINEAR)
+        img = PIL.Image.open(io.BytesIO(img_bytes)).convert("RGB")  # type: ignore[possibly-unbound]
+        img.thumbnail((_IMG_MAX_W, _IMG_MAX_H), PIL.Image.Resampling.BILINEAR)  # type: ignore[possibly-unbound, attr-defined]
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=_JPEG_Q, optimize=False)
         return buf.getvalue(), "image/jpeg"
@@ -113,13 +127,13 @@ def _capture_screen() -> tuple[bytes, str]:
     if not _MSS:
         raise RuntimeError("mss is not installed. Run: pip install mss")
 
-    with mss.mss() as sct:
+    with mss.mss() as sct:  # type: ignore[possibly-unbound]
         monitors = sct.monitors          # [0] = all combined, [1..n] = real screens
         target   = monitors[1] if len(monitors) > 1 else monitors[0]
         shot     = sct.grab(target)
-        png      = mss.tools.to_png(shot.rgb, shot.size)
+        png      = mss.tools.to_png(shot.rgb, shot.size)  # type: ignore[possibly-unbound]
 
-    return _compress(png, "PNG")
+    return _compress(png, "PNG")  # type: ignore[arg-type]
 
 
 def _cv2_backend() -> int:
@@ -128,17 +142,17 @@ def _cv2_backend() -> int:
         return 0
     os_name = _get_os()
     if os_name == "windows":
-        return cv2.CAP_DSHOW    
+        return cv2.CAP_DSHOW  # type: ignore[possibly-unbound]   
     if os_name == "mac":
-        return cv2.CAP_AVFOUNDATION  
-    return cv2.CAP_ANY
+        return cv2.CAP_AVFOUNDATION  # type: ignore[possibly-unbound]  
+    return cv2.CAP_ANY  # type: ignore[possibly-unbound]
 
 
 def _probe_camera(index: int, backend: int, warmup: int = 5) -> bool:
 
     if not _CV2:
         return False
-    cap = cv2.VideoCapture(index, backend)
+    cap = cv2.VideoCapture(index, backend)  # type: ignore[possibly-unbound]
     if not cap.isOpened():
         cap.release()
         return False
@@ -180,7 +194,7 @@ def _capture_camera() -> tuple[bytes, str]:
 
     index   = _get_camera_index()
     backend = _cv2_backend()
-    cap     = cv2.VideoCapture(index, backend)
+    cap     = cv2.VideoCapture(index, backend)  # type: ignore[possibly-unbound]
 
     if not cap.isOpened():
         raise RuntimeError(f"Camera index {index} could not be opened.")
@@ -195,14 +209,17 @@ def _capture_camera() -> tuple[bytes, str]:
         raise RuntimeError("Camera returned no frame.")
 
     if _PIL:
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = PIL.Image.fromarray(rgb)
-        img.thumbnail((_IMG_MAX_W, _IMG_MAX_H), PIL.Image.BILINEAR)
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=_JPEG_Q)
-        return buf.getvalue(), "image/jpeg"
+        try:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # type: ignore[possibly-unbound]
+            img = PIL.Image.fromarray(rgb)  # type: ignore[possibly-unbound]
+            img.thumbnail((_IMG_MAX_W, _IMG_MAX_H), PIL.Image.Resampling.BILINEAR)  # type: ignore[possibly-unbound, attr-defined]
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=_JPEG_Q)
+            return buf.getvalue(), "image/jpeg"
+        except Exception as e:
+            print(f"[Vision] ⚠️  Camera PIL compress failed: {e}")
 
-    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, _JPEG_Q])
+    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, _JPEG_Q])  # type: ignore[possibly-unbound]
     return buf.tobytes(), "image/jpeg"
 
 class _VisionSession:
@@ -260,8 +277,8 @@ class _VisionSession:
             http_options={"api_version": "v1beta"},
         )
         config = gtypes.LiveConnectConfig(
-            response_modalities=["AUDIO"],
-            output_audio_transcription={},
+            response_modalities=["AUDIO"],  # type: ignore[arg-type]
+            output_audio_transcription={},  # type: ignore[arg-type]
             system_instruction=_SYSTEM_PROMPT,
             speech_config=gtypes.SpeechConfig(
                 voice_config=gtypes.VoiceConfig(
@@ -301,14 +318,14 @@ class _VisionSession:
 
     async def _send_loop(self) -> None:
         while True:
-            image_bytes, mime_type, user_text = await self._out_queue.get()
+            image_bytes, mime_type, user_text = await self._out_queue.get()  # type: ignore[union-attr]
             if not self._session:
                 print("[Vision] ⚠️  No session — dropping image")
                 continue
             try:
                 b64 = base64.b64encode(image_bytes).decode("ascii")
                 await self._session.send_client_content(
-                    turns=[{
+                    turns=[{  # type: ignore[union-attr]
                         "role": "user",
                         "parts": [
                             {"inline_data": {"mime_type": mime_type, "data": b64}},
@@ -324,9 +341,9 @@ class _VisionSession:
     async def _recv_loop(self) -> None:
         transcript: list[str] = []
         try:
-            async for response in self._session.receive():
+            async for response in self._session.receive():  # type: ignore[union-attr]
                 if response.data:
-                    await self._audio_in.put(response.data)
+                    await self._audio_in.put(response.data)  # type: ignore[union-attr]
 
                 sc = response.server_content
                 if not sc:
@@ -359,7 +376,7 @@ class _VisionSession:
         stream.start()
         try:
             while True:
-                chunk = await self._audio_in.get()
+                chunk = await self._audio_in.get()  # type: ignore[union-attr]
                 await asyncio.to_thread(stream.write, chunk)
         except Exception as e:
             print(f"[Vision] ❌ Play error: {e}")

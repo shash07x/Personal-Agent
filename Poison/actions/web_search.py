@@ -29,7 +29,7 @@ def _gemini_search(query: str) -> str:
     )
 
     text = ""
-    for part in response.candidates[0].content.parts:
+    for part in response.candidates[0].content.parts:  # type: ignore[index, union-attr]
         if hasattr(part, "text") and part.text:
             text += part.text
 

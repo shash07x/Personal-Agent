@@ -64,7 +64,7 @@ def _parse_date(raw: str) -> str:
             f"Convert this date expression to YYYY-MM-DD: '{raw}'. "
             f"Return ONLY the date string, nothing else."
         )
-        result = response.text.strip()
+        result = (response.text or "").strip()  # type: ignore[union-attr]
         if re.match(r"\d{4}-\d{2}-\d{2}", result):
             return result
     except Exception as e:
@@ -170,7 +170,7 @@ def _parse_flights_with_gemini(
                 )
             )
         )
-        text     = re.sub(r"```(?:json)?", "", response.text).strip().rstrip("`").strip()
+        text     = re.sub(r"```(?:json)?", "", response.text or "").strip().rstrip("`").strip()  # type: ignore[call-overloads, arg-type]
         flights  = json.loads(text)
         return flights if isinstance(flights, list) else []
     except Exception as e:

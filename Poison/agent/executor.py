@@ -67,7 +67,7 @@ def _run_generated_code(description: str, speak: Callable | None = None) -> str:
                 )
             )
         )
-        code = response.text.strip()
+        code = response.text.strip()  # type: ignore[union-attr]
         code = re.sub(r"```(?:python)?", "", code).strip().rstrip("`").strip()
 
         with tempfile.NamedTemporaryFile(
@@ -137,7 +137,7 @@ def _detect_language(text: str) -> str:
             f"Reply with ONLY the language name in English (e.g. Turkish, English, French).\n\n"
             f"Text: {text[:200]}"
         )
-        return response.text.strip()
+        return response.text.strip()  # type: ignore[union-attr]
     except Exception:
         return "English"
 
@@ -163,7 +163,7 @@ def _translate_to_goal_language(content: str, goal: str) -> str:
             f"Text to translate:\n{content[:4000]}"
         )
         response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        translated = response.text.strip()
+        translated = response.text.strip()  # type: ignore[union-attr]
         print(f"[Executor] ✅ Translation done ({target_lang})")
         return translated
     except Exception as e:
@@ -371,7 +371,7 @@ class AgentExecutor:
             if speak: speak("Adjusting my approach, sir.")
 
             replan_attempts += 1
-            plan = replan(goal, completed_steps, failed_step, failed_error)
+            plan = replan(goal, completed_steps, failed_step, failed_error)  # type: ignore[arg-type]
 
     def _summarize(self, goal: str, completed_steps: list, speak: Callable | None) -> str:
         fallback = f"All done, sir. Completed {len(completed_steps)} steps for: {goal[:60]}."
@@ -387,7 +387,7 @@ class AgentExecutor:
             )
 
             response = client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
-            summary  = response.text.strip()
+            summary  = response.text.strip()  # type: ignore[union-attr]
             if speak: speak(summary)
             return summary
         except Exception:

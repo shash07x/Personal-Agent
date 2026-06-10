@@ -64,7 +64,7 @@ def _build_sandbox() -> dict:
     }
 
     if _PYAUTOGUI:
-        sandbox["pyautogui"] = pyautogui
+        sandbox["pyautogui"] = pyautogui  # type: ignore[possibly-unbound]
 
     if _OS == "Windows":
         try:
@@ -146,7 +146,7 @@ Task: {task}"""
 
     try:
         response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        code = response.text.strip()
+        code = response.text.strip()  # type: ignore[union-attr]
         if code.startswith("```"):
             lines = code.split("\n")
             code  = "\n".join(lines[1:-1]).strip()
@@ -414,7 +414,7 @@ def get_desktop_stats() -> str:
     )
 
 def desktop_control(
-    parameters: dict = None,
+    parameters: dict = None,  # type: ignore[arg-type]
     response=None,
     player=None,
     session_memory=None,
