@@ -38,13 +38,21 @@ import asyncio.windows_events as _sw_we
 import socket as _sw_sock
 _sw_orig = _sw_we.ProactorEventLoop.create_connection
 async def _sw_patched(self, protocol_factory, host=None, port=None, **kwargs):
-    if host is not None and port is not None and "sock" not in kwargs:
+    if host is not None:
+        kwargs.setdefault("host", host)
+    if port is not None:
+        kwargs.setdefault("port", port)
+
+    if "host" in kwargs and "port" in kwargs and "sock" not in kwargs:
+        host = kwargs.pop("host")
+        port = kwargs.pop("port")
+
         def _mk():
             s = _sw_sock.socket(_sw_sock.AF_INET, _sw_sock.SOCK_STREAM)
             s.settimeout(30); s.connect((host, port)); s.settimeout(None); s.setblocking(False)
             return s
         kwargs["sock"] = await self.run_in_executor(None, _mk)
-    return await _sw_orig(self, protocol_factory, host, port, **kwargs)
+    return await _sw_orig(self, protocol_factory, **kwargs)
 _sw_we.ProactorEventLoop.create_connection = _sw_patched
 
 from google import genai
@@ -87,7 +95,7 @@ def _get_os() -> str:
     return _load_config().get("os_system", "windows").lower()
 
 def _get_voice() -> str:
-    return _load_config().get("voice_name", "Charon")
+    return _load_config().get("voice_name", "Aoede")
 
 _LIVE_MODEL         = "models/gemini-2.5-flash-native-audio-latest"
 _CHANNELS           = 1

@@ -27,7 +27,7 @@ def is_mac()     -> bool: return get_os() == "mac"
 def is_linux()   -> bool: return get_os() == "linux"
 
 def get_voice() -> str:
-    return get_config().get("voice_name", "Charon")
+    return get_config().get("voice_name", "Aoede")
 
 def set_voice(name: str) -> None:
     update_config(voice_name=name)

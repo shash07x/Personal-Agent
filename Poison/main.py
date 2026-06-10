@@ -14,7 +14,12 @@ import socket as _socket
 
 _orig_create_connection = _asyncio_we.ProactorEventLoop.create_connection
 
-async def _patched_create_connection(self, protocol_factory, **kwargs):
+async def _patched_create_connection(self, protocol_factory, host=None, port=None, **kwargs):
+    if host is not None:
+        kwargs.setdefault("host", host)
+    if port is not None:
+        kwargs.setdefault("port", port)
+
     if "host" in kwargs and "port" in kwargs and "sock" not in kwargs:
         host = kwargs.pop("host")
         port = kwargs.pop("port")
